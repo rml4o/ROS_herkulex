@@ -1,0 +1,12 @@
+float64 timestamp   # motor state is at this time
+int32 id            # motor id
+float64 goal        # commanded position (in deg)
+float64 position    # current position (in deg)
+float64 speed       # current speed (deg per sec)
+float64 load        # current load - ratio of applied torque over maximum torque
+float64 voltage     # current voltage (V)
+int32 temperature   # current temperature (degrees Celsius)
+bool moving         # whether the motor is currently in motion
+bool in_position    # whether the motor is deemed to have reached its goal
+bool torque_enabled # whether torque is enabled
+uint8 error_code    # error code (0: no error)

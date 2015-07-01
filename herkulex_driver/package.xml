@@ -1,0 +1,23 @@
+<package>
+  <name>herkulex_driver</name>
+  <version>0.4.0</version>
+  <description>
+    This package provides low level IO for Herkulex servos.
+  </description>
+  <maintainer email="arebgun@gmail.com">Antons Rebguns</maintainer>
+
+  <license>BSD</license>
+
+  <author>Antons Rebguns</author>
+  <author>Cody Jorgensen</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>rospy</run_depend>
+  <run_depend>diagnostic_msgs</run_depend>
+  <run_depend>python-serial</run_depend>
+
+  <export>
+
+  </export>
+</package>

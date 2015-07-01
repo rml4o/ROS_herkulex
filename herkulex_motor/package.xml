@@ -1,0 +1,25 @@
+<package>
+  <name>herkulex_motor</name>
+  <version>0.4.0</version>
+  <description>
+    This stack contains packages that are used to interface with Herkulex
+    line of servos.
+  </description>
+  <maintainer email="arebgun@gmail.com">Antons Rebguns</maintainer>
+
+  <license>BSD</license>
+
+  <author>Antons Rebguns</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+<!--
+  <run_depend>herkulex_tutorials</run_depend>
+-->
+  <run_depend>herkulex_msgs</run_depend>
+  <run_depend>herkulex_controllers</run_depend>
+  <run_depend>herkulex_driver</run_depend>
+
+  <export>
+    <metapackage/>
+  </export>
+</package>
