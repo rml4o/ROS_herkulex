@@ -71,6 +71,13 @@ class JointPositionController(JointController):
             rospy.logwarn('Available ids: %s' % str(available_ids))
             rospy.logwarn('Specified id: %d' % self.motor_id)
             return False
+            
+        #set angle limits in hardware TODO: find a way to have the value updated in the params / controller_manager as well...
+        #values = ((min(self.min_angle_deg, self.max_angle_deg), max(self.min_angle_deg, self.max_angle_deg)),)
+        #ids = (self.motor_id,)
+        #gh = dict(list(zip(ids, values)))
+        #self.hkx_io.set_angle_limit(gh)
+        
         
         if self.flipped:
             self.min_angle = (self.initial_position_deg - self.min_angle_deg) * math.pi / 180
@@ -83,6 +90,8 @@ class JointPositionController(JointController):
         if self.compliance_margin is not None: self.set_compliance_margin(self.compliance_margin)
         if self.compliance_punch is not None: self.set_compliance_punch(self.compliance_punch)
         if self.torque_limit is not None: self.set_torque_limit(self.torque_limit)
+            
+#TODO: should send the angle limit to the servo ? or to be done by the controller manager ?
 #TODO
 #        self.joint_max_speed = rospy.get_param(self.controller_namespace + '/joint_max_speed', self.MAX_VELOCITY)
 #        
@@ -101,50 +110,50 @@ class JointPositionController(JointController):
         elif pos_rad > self.max_angle: pos_rad = self.max_angle
         return self.rad_to_deg(pos_rad, self.initial_position_deg, self.flipped)
 
-    def spd_rad_to_deg(self, spd_rad):
-        #TODO: reinstate check?
-#        if spd_rad < self.MIN_VELOCITY: spd_rad = self.MIN_VELOCITY
-#        elif spd_rad > self.joint_max_speed: spd_rad = self.joint_max_speed
-        return spd_rad * 180 / math.pi
-
     def set_torque_enable(self, torque_enable):
-        mcv = (self.motor_id, torque_enable)
-        self.hkx_io.set_torque_enable([mcv])
+        mcv = (self.motor_id,)
+        if torque_enable:
+            self.hkx_io.enable_torque(mcv)
+        else:
+            self.hkx_io.disable_torque(mcv)
 
     def set_speed(self, speed):
-        mcv = (self.motor_id, self.spd_rad_to_deg(speed))
-        self.hkx_io.set_speed([mcv])
+        self.joint_speed = speed
 
     def set_compliance_slope(self, slope):
-        #TODO: reinstate check?
-#       if slope < DXL_MIN_COMPLIANCE_SLOPE: slope = DXL_MIN_COMPLIANCE_SLOPE
+        pass
+#        #TODO: reinstate check?
+#        if slope < DXL_MIN_COMPLIANCE_SLOPE: slope = DXL_MIN_COMPLIANCE_SLOPE
 #        elif slope > DXL_MAX_COMPLIANCE_SLOPE: slope = DXL_MAX_COMPLIANCE_SLOPE
-        mcv = (self.motor_id, slope, slope)
-        self.hkx_io.set_compliance_slope([mcv])
+#        mcv = (self.motor_id, slope, slope)
+#        self.hkx_io.set_compliance_slope([mcv])
 
     def set_compliance_margin(self, margin):
-        #TODO: reinstate check?
- #       if margin < DXL_MIN_COMPLIANCE_MARGIN: margin = DXL_MIN_COMPLIANCE_MARGIN
- #       elif margin > DXL_MAX_COMPLIANCE_MARGIN: margin = DXL_MAX_COMPLIANCE_MARGIN
+        pass
+#        #TODO: reinstate check?
+#        if margin < DXL_MIN_COMPLIANCE_MARGIN: margin = DXL_MIN_COMPLIANCE_MARGIN
+#        elif margin > DXL_MAX_COMPLIANCE_MARGIN: margin = DXL_MAX_COMPLIANCE_MARGIN
 #        else: margin = int(margin)
-        mcv = (self.motor_id, margin, margin)
-        self.hkx_io.set_multi_compliance_margins([mcv])
+#        mcv = (self.motor_id, margin, margin)
+#        self.hkx_io.set_multi_compliance_margins([mcv])
 
     def set_compliance_punch(self, punch):
-        #TODO: reinstate check?
+        pass
+#        #TODO: reinstate check?
 #        if punch < DXL_MIN_PUNCH: punch = DXL_MIN_PUNCH
 #        elif punch > DXL_MAX_PUNCH: punch = DXL_MAX_PUNCH
 #        else: punch = int(punch)
-        mcv = (self.motor_id, punch)
-        self.hkx_io.set_punch([mcv])
+#        mcv = (self.motor_id, punch)
+#        self.hkx_io.set_punch([mcv])
 
     def set_torque_limit(self, max_torque):
+        pass
         #TODO: reinstate check?
 #        if max_torque > 1: max_torque = 1.0         # use all torque motor can provide
 #        elif max_torque < 0: max_torque = 0.0       # turn off motor torque
 #        raw_torque_val = int(DXL_MAX_TORQUE_TICK * max_torque)
 #        mcv = (self.motor_id, raw_torque_val)
-        self.hkx_io.set_torque_limit([mcv])
+#        self.hkx_io.set_torque_limit([mcv])
 
     def process_motor_states(self, state_list):
         if self.running:
@@ -157,11 +166,12 @@ class JointPositionController(JointController):
                 self.joint_state_pub.publish(self.joint_state)
 
     def process_command(self, msg):
-        print('bouge tes fesses')
-        print(msg)
-        #TODO JOG
         angle = msg.data
-        mcv = (self.motor_id, self.pos_rad_to_deg(angle))
-        print(mcv)
-        #self.hkx_io.set__position([mcv])
-
+        mcv = self.pos_rad_to_deg(angle)
+        spdeg = self.joint_speed * 180 / math.pi
+        if spdeg > 0:
+            exectime = 1 #TODO: compute based on speed
+            values = ((mcv, exectime, 0),)
+            ids = (self.motor_id,)
+            gh = dict(list(zip(ids, values)))
+            self.hkx_io.set_joint_jog_load(gh)
