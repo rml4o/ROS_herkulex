@@ -270,11 +270,11 @@ class AbstractHkxIO(AbstractIO):
 
     def enable_torque(self, ids):
         """ Enables torque of the motors with the specified ids. """
-        self.set_torque_enabled(dict(zip(ids, itertools.repeat(True))))
+        self._set_torque_enable(dict(zip(ids, itertools.repeat(True))))
 
     def disable_torque(self, ids):
         """ Disables torque of the motors with the specified ids. """
-        self.set_torque_enabled(dict(zip(ids, itertools.repeat(False))))
+        self._set_torque_enable(dict(zip(ids, itertools.repeat(False))))
 
     #TODO: add PID gain functions?
 
