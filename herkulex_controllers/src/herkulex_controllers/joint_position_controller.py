@@ -55,11 +55,16 @@ class JointPositionController(JointController):
         JointController.__init__(self, hkx_io, controller_namespace, port_namespace)
         
         self.motor_id = rospy.get_param(self.controller_namespace + '/motor/id')
-        self.initial_position_deg = rospy.get_param(self.controller_namespace + '/motor/init')
-        self.min_angle_deg = rospy.get_param(self.controller_namespace + '/motor/min')
-        self.max_angle_deg = rospy.get_param(self.controller_namespace + '/motor/max')
-        
-        self.flipped = self.min_angle_deg > self.max_angle_deg
+        self.offset_rad = rospy.get_param(self.controller_namespace + '/motor/offset_rad')        
+        self.flipped = rospy.get_param(self.controller_namespace + '/motor/flipped')
+        self.angle_max_rad = rospy.get_param(self.controller_namespace + '/motor/max_angle_rad')
+        self.angle_min_rad = rospy.get_param(self.controller_namespace + '/motor/min_angle_rad')
+        #check if min/max make sense
+        if self.angle_max_rad < self.angle_min_rad:
+            self.angle_min_rad, self.angle_max_rad =self.angle_max_rad, self.angle_min_rad
+            rospy.set_param(self.controller_namespace + '/motor/min_angle_rad', self.angle_min_rad)
+            rospy.set_param(self.controller_namespace + '/motor/max_angle_rad', self.angle_max_rad)
+            rospy.logwarn('The lower and upper software angle limits for joint %s are in the wrong order, and have been adjusted accordingly.' %(self.joint_name))
         
         self.joint_state = JointState(name=(self.joint_name,))
 
@@ -72,26 +77,27 @@ class JointPositionController(JointController):
             rospy.logwarn('Specified id: %d' % self.motor_id)
             return False
             
-        #set angle limits in hardware TODO: find a way to have the value updated in the params / controller_manager as well...
-        #values = ((min(self.min_angle_deg, self.max_angle_deg), max(self.min_angle_deg, self.max_angle_deg)),)
-        #ids = (self.motor_id,)
-        #gh = dict(list(zip(ids, values)))
-        #self.hkx_io.set_angle_limit(gh)
-        
+        #check consistency of the max/min angle_rad (ofter offset and flip) with HW angle limits
+        HW_min_angle_limit_in_rad =self.deg_to_rad( rospy.get_param('herkulex/%s/%s/min_HW_angle' %(self.port_namespace,self.motor_id)))
+        HW_max_angle_limit_in_rad =self.deg_to_rad( rospy.get_param('herkulex/%s/%s/max_HW_angle' %(self.port_namespace,self.motor_id)))
         
         if self.flipped:
-            self.min_angle = (self.initial_position_deg - self.min_angle_deg) * math.pi / 180
-            self.max_angle = (self.initial_position_deg - self.max_angle_deg) * math.pi / 180
-        else:
-            self.min_angle = (self.min_angle_deg - self.initial_position_deg) * math.pi / 180
-            self.max_angle = (self.max_angle_deg - self.initial_position_deg) * math.pi / 180
-            
-        if self.compliance_slope is not None: self.set_compliance_slope(self.compliance_slope)
-        if self.compliance_margin is not None: self.set_compliance_margin(self.compliance_margin)
-        if self.compliance_punch is not None: self.set_compliance_punch(self.compliance_punch)
+            HW_max_angle_limit_in_rad, HW_min_angle_limit_in_rad = HW_min_angle_limit_in_rad, HW_max_angle_limit_in_rad
+
+        rad_safety_margin=0.015
+        
+        if self.angle_min_rad < ( HW_min_angle_limit_in_rad + rad_safety_margin):
+            rospy.logwarn('The lower software angle limit for joint %s (%s rad) is below the implied hardware limit (%s) plus safety margin (%s), and has been adjusted accordingly.' %(self.joint_name, self.angle_min_rad, HW_min_angle_limit_in_rad, rad_safety_margin))
+            self.angle_min_rad = HW_min_angle_limit_in_rad + rad_safety_margin
+            rospy.set_param(self.controller_namespace + '/motor/min_angle_rad', self.angle_min_rad)
+
+        if self.angle_max_rad > (HW_max_angle_limit_in_rad - rad_safety_margin):
+            rospy.logwarn('The upper software angle limit for joint %s (%s rad) is above the implied hardware limit (%s) minus safety margin (%s), and has been adjusted accordingly.' %(self.joint_name, self.angle_max_rad, HW_max_angle_limit_in_rad, rad_safety_margin))
+            self.angle_max_rad = HW_max_angle_limit_in_rad - rad_safety_margin
+            rospy.set_param(self.controller_namespace + '/motor/max_angle_rad', self.angle_max_rad)
+
         if self.torque_limit is not None: self.set_torque_limit(self.torque_limit)
             
-#TODO: should send the angle limit to the servo ? or to be done by the controller manager ?
 #TODO
 #        self.joint_max_speed = rospy.get_param(self.controller_namespace + '/joint_max_speed', self.MAX_VELOCITY)
 #        
@@ -104,11 +110,16 @@ class JointPositionController(JointController):
 #        self.set_speed(self.joint_speed)
         
         return True
-
-    def pos_rad_to_deg(self, pos_rad):
-        if pos_rad < self.min_angle: pos_rad = self.min_angle
-        elif pos_rad > self.max_angle: pos_rad = self.max_angle
-        return self.rad_to_deg(pos_rad, self.initial_position_deg, self.flipped)
+    #more than just a rad<->deg conversion, this function also handles flipping and offset
+    def rad_to_deg(self, angle):
+        angle_deg = (angle + self.offset_rad) * 180 / math.pi
+        return -angle_deg if self.flipped else angle_deg
+        
+    #more than just a rad<->deg conversion, this function also handles flipping and offset
+    def deg_to_rad(self, deg):
+        rad = deg * math.pi / 180
+        rad = -rad if self.flipped else rad
+        return rad
 
     def set_torque_enable(self, torque_enable):
         mcv = (self.motor_id,)
@@ -120,31 +131,6 @@ class JointPositionController(JointController):
     def set_speed(self, speed):
         self.joint_speed = speed
 
-    def set_compliance_slope(self, slope):
-        pass
-#        #TODO: reinstate check?
-#        if slope < DXL_MIN_COMPLIANCE_SLOPE: slope = DXL_MIN_COMPLIANCE_SLOPE
-#        elif slope > DXL_MAX_COMPLIANCE_SLOPE: slope = DXL_MAX_COMPLIANCE_SLOPE
-#        mcv = (self.motor_id, slope, slope)
-#        self.hkx_io.set_compliance_slope([mcv])
-
-    def set_compliance_margin(self, margin):
-        pass
-#        #TODO: reinstate check?
-#        if margin < DXL_MIN_COMPLIANCE_MARGIN: margin = DXL_MIN_COMPLIANCE_MARGIN
-#        elif margin > DXL_MAX_COMPLIANCE_MARGIN: margin = DXL_MAX_COMPLIANCE_MARGIN
-#        else: margin = int(margin)
-#        mcv = (self.motor_id, margin, margin)
-#        self.hkx_io.set_multi_compliance_margins([mcv])
-
-    def set_compliance_punch(self, punch):
-        pass
-#        #TODO: reinstate check?
-#        if punch < DXL_MIN_PUNCH: punch = DXL_MIN_PUNCH
-#        elif punch > DXL_MAX_PUNCH: punch = DXL_MAX_PUNCH
-#        else: punch = int(punch)
-#        mcv = (self.motor_id, punch)
-#        self.hkx_io.set_punch([mcv])
 
     def set_torque_limit(self, max_torque):
         pass
@@ -160,18 +146,23 @@ class JointPositionController(JointController):
             state = filter(lambda state: state.id == self.motor_id, state_list.motor_states)
             if state:
                 state = state[0]
-                self.joint_state.position = (self.deg_to_rad(state.position, self.initial_position_deg, self.flipped),)
+                self.joint_state.position = (self.deg_to_rad(state.position),)
                 self.joint_state.velocity = (state.speed * math.pi / 180,)
                 self.joint_state.effort = (state.load,)
                 self.joint_state_pub.publish(self.joint_state)
 
     def process_command(self, msg):
-        angle = msg.data
-        mcv = self.pos_rad_to_deg(angle)
-        spdeg = self.joint_speed * 180 / math.pi
-        if spdeg > 0:
-            exectime = 1 #TODO: compute based on speed
+        angle = max(min(msg.data, self.angle_max_rad), self.angle_min_rad)
+        if msg.data != angle:
+            rospy.logwarn('Goal position for joint %s modified to remain within limits (%s rad done vs %s rad requested)' %(self.joint_name, angle, msg.data))
+        mcv = self.rad_to_deg(angle)
+        if self.joint_speed > 0:
+            exectime = 2 #TODO: compute based on speed
             values = ((mcv, exectime, 0),)
             ids = (self.motor_id,)
             gh = dict(list(zip(ids, values)))
             self.hkx_io.set_joint_jog_load(gh)
+
+    def process_clear_errors(self, req):
+        self.hkx_io.clear_errors((self.motor_id,))
+        return []

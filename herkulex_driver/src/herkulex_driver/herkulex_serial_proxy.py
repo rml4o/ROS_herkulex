@@ -117,7 +117,7 @@ class SerialProxy():
     def disconnect(self):
         self.running = False
 
-    def __fill_motor_parameters(self, motor_id, model_name):
+    def __fill_set_motor_parameters(self, motor_id, model_name):
         """
         Stores some extra information about each motor on the parameter server.
         Some of these paramters are used in joint controller implementation.
@@ -126,15 +126,15 @@ class SerialProxy():
         voltage = self.hkx_io.get_present_voltage({motor_id,})
         voltages = self.hkx_io.get_voltage_limit({motor_id,})
         rospy.set_param('herkulex/%s/%d/model_name' %(self.port_namespace, motor_id), model_name)
-        rospy.set_param('herkulex/%s/%d/min_angle' %(self.port_namespace, motor_id), angles[0][0])
-        rospy.set_param('herkulex/%s/%d/max_angle' %(self.port_namespace, motor_id), angles[0][1])
+        rospy.set_param('herkulex/%s/%d/min_HW_angle' %(self.port_namespace, motor_id), angles[0][0])
+        rospy.set_param('herkulex/%s/%d/max_HW_angle' %(self.port_namespace, motor_id), angles[0][1])
         
         # keep some parameters around for diagnostics
         self.motor_static_info[motor_id] = {}
         self.motor_static_info[motor_id]['model'] = model_name
         self.motor_static_info[motor_id]['firmware'] = self.hkx_io.get_firmware({motor_id,})[0]       
-        self.motor_static_info[motor_id]['min_angle'] = angles[0][0]
-        self.motor_static_info[motor_id]['max_angle'] = angles[0][1]
+        self.motor_static_info[motor_id]['min_HW_angle'] = angles[0][0]
+        self.motor_static_info[motor_id]['max_HW_angle'] = angles[0][1]
         self.motor_static_info[motor_id]['min_voltage'] = voltages[0][0]
         self.motor_static_info[motor_id]['max_voltage'] = voltages[0][1]
 
@@ -162,7 +162,7 @@ class SerialProxy():
         for motor_id in self.motors:
             try:
                 model_name = self.hkx_io.get_model({motor_id,})[0]
-                self.__fill_motor_parameters(motor_id, model_name)
+                self.__fill_set_motor_parameters(motor_id, model_name)
             except Exception as ex:
                 rospy.logerr('Exception thrown while getting attributes for motor %d - %s' % (motor_id, ex))
                 to_delete_if_error.append(motor_id)
@@ -291,8 +291,8 @@ class SerialProxy():
                 status.values.append(KeyValue('Firmware Version', str(self.motor_static_info[mid]['firmware'])))
                 status.values.append(KeyValue('Minimum Voltage', str(self.motor_static_info[mid]['min_voltage'])))
                 status.values.append(KeyValue('Maximum Voltage', str(self.motor_static_info[mid]['max_voltage'])))
-                status.values.append(KeyValue('Minimum Position (CW)', str(self.motor_static_info[mid]['min_angle'])))
-                status.values.append(KeyValue('Maximum Position (CCW)', str(self.motor_static_info[mid]['max_angle'])))
+                status.values.append(KeyValue('Minimum HW Position (CW)', str(self.motor_static_info[mid]['min_HW_angle'])))
+                status.values.append(KeyValue('Maximum HW Position (CCW)', str(self.motor_static_info[mid]['max_HW_angle'])))
                 
                 status.values.append(KeyValue('Goal', str(motor_state.goal)))
                 status.values.append(KeyValue('Position', str(motor_state.position)))

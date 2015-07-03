@@ -71,9 +71,10 @@ def hkx_to_torque(value, model):
 def torque_to_hkx(value, model):
     return value
 
-
+#as pct of maximum load
 def hkx_to_load(value, model):
-    return value
+    normed = value & 0x03FF 
+    return normed
 
 
 # MARK: - Torque mode

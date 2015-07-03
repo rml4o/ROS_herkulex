@@ -31,6 +31,9 @@ class HkxIO(AbstractHkxIO):
         nval = [(d[0], d[1], 'off') for d in input_dict.values()]
         jointjog=dict(list(zip(nid,nval)))
         self.joint_jog(jointjog, convert = True)
+        
+    def clear_errors(self, ids):
+        self.set_status_error(dict(zip(ids, itertools.repeat(0))))
 
 
 # MARK: - Generate the accessors
@@ -182,7 +185,6 @@ _add_control('angle_limit',
 _add_control('status_error',
              eeprom_ram = 'RAM', 
              address=48, length=1,
-             access=_HkxAccess.readonly,
              hkx_to_si=hkx_to_status_error)
 
 _add_control('status_detail',

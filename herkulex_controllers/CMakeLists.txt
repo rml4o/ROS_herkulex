@@ -6,14 +6,12 @@ find_package(catkin REQUIRED COMPONENTS message_generation)
 add_service_files(
   FILES
   RestartController.srv
-  SetComplianceMargin.srv
-  SetCompliancePunch.srv
-  SetComplianceSlope.srv
   SetSpeed.srv
   SetTorqueLimit.srv
   StartController.srv
   StopController.srv
   TorqueEnable.srv
+  ClearErrors.srv
 )
 
 catkin_python_setup()
