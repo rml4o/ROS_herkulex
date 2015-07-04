@@ -270,7 +270,7 @@ _add_control('present_position_speed_load',
                                              hkx_to_speed(value[1], model),
                                              hkx_to_load(value[2], model)))
 
-#'pot' field actually only avaialbel on certain models                                             
+#'pot' field actually only available on certain models                                             
 _add_control('present_position_speed_load_pot_goal',
              eeprom_ram = 'RAM',
              address=60, nb_elem=5,

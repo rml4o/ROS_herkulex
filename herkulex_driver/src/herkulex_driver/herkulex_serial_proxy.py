@@ -191,15 +191,22 @@ class SerialProxy():
         num_events = 50
         rates = deque([float(self.update_rate)]*num_events, maxlen=num_events)
         last_time = rospy.Time.now()
-        
+        voltage_temp_freq_ratio = 50 #voltage and temperature are not measured every time
+        vt_counter = voltage_temp_freq_ratio
         rate = rospy.Rate(self.update_rate)
         while not rospy.is_shutdown() and self.running:
             # get current state of all motors and publish to motor_states topic
             kw = {'return_status_bytes': True,}
-#            try:
-            #TODO: in io, create and use a single function to fetch all at once (manage different bytes sizes)
+#           try:
             motor_states = self.hkx_io.get_present_position_speed_load_pot_goal(self.motors, **kw)
-            voltemps = self.hkx_io.get_present_voltage_temperature(self.motors)
+            #only update temperature and voltage once out of X iterations
+            if vt_counter >= voltage_temp_freq_ratio:
+                vt_counter = 0
+                voltemps = self.hkx_io.get_present_voltage_temperature(self.motors)
+
+            vt_counter = vt_counter + 1
+                
+#            print('single: %s' %(b-t0))
                 ##TODO: make the following fit with HkxIO errors
 #                if herkulex_io.exception: raise herkulex_io.exception
 #            except herkulex_io.FatalErrorCodeError, fece:
