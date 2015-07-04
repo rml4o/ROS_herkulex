@@ -157,7 +157,7 @@ class JointPositionController(JointController):
             rospy.logwarn('Goal position for joint %s modified to remain within limits (%s rad done vs %s rad requested)' %(self.joint_name, angle, msg.data))
         mcv = self.rad_to_deg(angle)
         if self.joint_speed > 0:
-            exectime = 2 #TODO: compute based on speed
+            exectime = 0.5 #TODO: compute based on speed
             values = ((mcv, exectime, 0),)
             ids = (self.motor_id,)
             gh = dict(list(zip(ids, values)))
