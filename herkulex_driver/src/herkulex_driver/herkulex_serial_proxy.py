@@ -206,7 +206,6 @@ class SerialProxy():
 
             vt_counter = vt_counter + 1
                 
-#            print('single: %s' %(b-t0))
                 ##TODO: make the following fit with HkxIO errors
 #                if herkulex_io.exception: raise herkulex_io.exception
 #            except herkulex_io.FatalErrorCodeError, fece:

@@ -229,7 +229,6 @@ class ControllerManager:
             self.start_controller_lock.release()
             return StartControllerResponse(False, 'Specified port [%s] not found, available ports are %s. Unable to start controller %s' % (port_name, str(self.serial_proxies.keys()), controller_name))
         
-        print(kls)
         controller = kls(self.serial_proxies[port_name].hkx_io, controller_name, port_name)
         
         if controller.initialize():
